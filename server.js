@@ -166,6 +166,9 @@ if (process.env.NODE_ENV === 'production' || fs.existsSync(DIST_INDEX)) {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === 'production' && !process.env.APP_PASSWORD) {
+    throw new Error('APP_PASSWORD must be set in production');
+  }
   await initDb();
   await migrate();
   await seedIfEmpty();
