@@ -1,0 +1,7 @@
+{
+  "serverUrl": "http://localhost:3001",
+  "agentToken": "replace-with-AGENT_TOKEN",
+  "agentId": "desktop-1",
+  "ptcgpbRoot": "C:\\Users\\User\\Desktop\\PTCGPB-main",
+  "pollMs": 5000
+}

@@ -1,0 +1,35 @@
+{
+  "name": "pokemontcg-lister",
+  "version": "1.0.0",
+  "description": "Multi-account Pokémon TCG Pocket inventory, listings, and trade-job dispatch",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently \"nodemon server.js --ignore client/ --ignore .data/\" \"cd client && npm run dev\"",
+    "build": "cd client && npm install && npm run build",
+    "postinstall": "cd client && npm install",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js",
+    "refresh-catalog": "node scripts/refresh-card-catalog.js",
+    "test": "node --test routes/utils/jobPayload.test.js routes/utils/importers/pathGuard.test.js routes/utils/importers/ptcgpbAccount.test.js routes/utils/rules/engine.test.js routes/utils/routing/router.test.js routes/utils/aggregates.test.js agent/jobPayload.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@electric-sql/pglite": "^0.3.0",
+    "axios": "^1.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "^4.19.0",
+    "express-session": "^1.19.0",
+    "multer": "^2.1.1",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.1.0"
+  }
+}

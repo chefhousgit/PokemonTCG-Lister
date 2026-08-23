@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "verified": false,
+  "rarityEligibility": {
+    "one_diamond": true,
+    "two_diamond": true,
+    "three_diamond": true,
+    "four_diamond": false,
+    "one_star": false,
+    "two_star": false,
+    "promo": true,
+    "unknown": true
+  },
+  "sameRarityOnly": true,
+  "currencyCostByRarity": {
+    "one_diamond": 0,
+    "two_diamond": 0,
+    "three_diamond": 0,
+    "four_diamond": 0,
+    "one_star": 0,
+    "two_star": 0,
+    "promo": 0,
+    "unknown": 0
+  },
+  "friendshipRequired": true,
+  "perSetRestrictions": []
+}

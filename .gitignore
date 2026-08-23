@@ -1,0 +1,15 @@
+node_modules/
+client/node_modules/
+client/dist/
+.data/
+.env
+agent/config.json
+*.tmp
+*.bak
+*.png
+.claude/
+.agents/
+
+# Never commit PTCGPB credential dumps
+Accounts/Saved/
+**/Accounts/Saved/**

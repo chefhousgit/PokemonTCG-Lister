@@ -1,0 +1,14 @@
+{
+  "deviceAccount": "aaa111aaa111aaaa",
+  "metadata": {},
+  "pulls": [
+    {
+      "timestamp": "2026-08-22 04:34:39",
+      "pack": "B4",
+      "cards": ["PK_10_020600_00"]
+    }
+  ],
+  "registeredCards": [],
+  "tradedCards": {},
+  "sharedCards": {}
+}

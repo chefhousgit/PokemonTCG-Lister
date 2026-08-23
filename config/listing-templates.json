@@ -1,0 +1,5 @@
+{
+  "title": "{name} {set} {number} {rarity}",
+  "description": "{name} ({set} #{number}, {rarity}, {variant}). Sellable copies: {sellable}. Traded from a specific in-game account after purchase.",
+  "footer": "Buyer sends friend code. Trade completed in Pokémon TCG Pocket."
+}

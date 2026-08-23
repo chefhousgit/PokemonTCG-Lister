@@ -1,0 +1,25 @@
+{
+  "deviceAccount": "bbb222bbb222bbbb",
+  "metadata": {
+    "instance": "2",
+    "fileName": "bbb222bbb222bbbb.xml",
+    "accountName": "seed-bravo",
+    "language": "en",
+    "packCount": 13,
+    "shinedust": { "value": 360 }
+  },
+  "pulls": [
+    {
+      "timestamp": "2026-08-22 13:06:45",
+      "pack": "B4",
+      "cards": [
+        "PK_10_020130_00",
+        "PK_10_020480_00",
+        "PK_10_020130_00"
+      ]
+    }
+  ],
+  "registeredCards": [],
+  "tradedCards": {},
+  "sharedCards": {}
+}
