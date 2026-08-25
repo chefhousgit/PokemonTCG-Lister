@@ -1,6 +1,15 @@
 const express = require('express');
 const { getDb } = require('./utils/db');
 const { assertSafeImportPath } = require('./utils/importers/pathGuard');
+const { ensureCatalog } = require('./utils/catalog');
+const {
+  loadState,
+  saveState,
+  publicState,
+  mergeAlertSettings,
+  searchCatalog,
+  sendTestAlert,
+} = require('./utils/cardAlerts');
 
 const router = express.Router();
 
@@ -36,6 +45,46 @@ router.delete('/paths/:id', async (req, res) => {
   const db = getDb();
   await db.query('DELETE FROM ptcgpb_paths WHERE id = $1', [req.params.id]);
   res.json({ ok: true });
+});
+
+router.get('/card-alerts', async (_req, res) => {
+  try { await ensureCatalog(); } catch { /* names still fall back to ids */ }
+  const state = await loadState(getDb());
+  res.json(publicState(state));
+});
+
+router.put('/card-alerts', async (req, res) => {
+  try {
+    try { await ensureCatalog(); } catch { /* names still fall back to ids */ }
+    const current = await loadState(getDb());
+    const patch = {};
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'webhookUrl')) {
+      patch.webhookUrl = req.body.webhookUrl;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body || {}, 'cardIds')) {
+      patch.cardIds = req.body.cardIds;
+    }
+    const next = await saveState(getDb(), mergeAlertSettings(current, patch));
+    res.json(publicState(next));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.post('/card-alerts/test', async (req, res) => {
+  try {
+    try { await ensureCatalog(); } catch { /* names still fall back to ids */ }
+    await sendTestAlert(getDb(), req.body && req.body.webhookUrl);
+    res.json({ ok: true });
+  } catch (err) {
+    const status = /webhook|Discord|Save a Discord/i.test(err.message) ? 400 : 502;
+    res.status(status).json({ error: err.message });
+  }
+});
+
+router.get('/catalog', async (req, res) => {
+  try { await ensureCatalog(); } catch { /* empty search if catalog missing */ }
+  res.json({ cards: searchCatalog(req.query.q) });
 });
 
 module.exports = router;

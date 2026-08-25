@@ -14,7 +14,7 @@
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "refresh-catalog": "node scripts/refresh-card-catalog.js",
-    "test": "node --test routes/utils/jobPayload.test.js routes/utils/importers/pathGuard.test.js routes/utils/importers/ptcgpbAccount.test.js routes/utils/rules/engine.test.js routes/utils/routing/router.test.js routes/utils/aggregates.test.js agent/jobPayload.test.js"
+    "test": "node --test routes/utils/jobPayload.test.js routes/utils/importers/pathGuard.test.js routes/utils/importers/ptcgpbAccount.test.js routes/utils/importers/diff.test.js routes/utils/catalog.test.js routes/utils/dashboardPayload.test.js routes/utils/liveDashboard.test.js routes/utils/cardAlerts.test.js routes/utils/rules/engine.test.js routes/utils/routing/router.test.js routes/utils/aggregates.test.js agent/jobPayload.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",

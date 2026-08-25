@@ -10,6 +10,9 @@ agent/config.json
 .claude/
 .agents/
 
+data/card-catalog/*.json
+public/card-dashboard.src.html
+
 # Never commit PTCGPB credential dumps
 Accounts/Saved/
 **/Accounts/Saved/**

@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const { initDb } = require('./routes/utils/db');
 const { migrate } = require('./scripts/migrate');
 const { seedIfEmpty } = require('./scripts/seed');
+const { getLiveMeta, requestPull } = require('./routes/utils/liveDashboard');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -17,8 +18,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 app.use(cors());
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use(express.json({ limit: '32mb' }));
+app.use(express.urlencoded({ extended: true, limit: '32mb' }));
 
 app.use(session({
   secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
@@ -144,13 +145,25 @@ app.use('/api/accounts', require('./routes/accounts'));
 app.use('/api/agent', require('./routes/agent'));
 app.use('/api/export', require('./routes/export'));
 app.use('/api/claude', require('./routes/claude'));
+app.use('/__dashboard', require('./routes/dashboard'));
+
+app.get('/dashboard', (_req, res) => {
+  const file = path.join(__dirname, 'public', 'card-dashboard.html');
+  if (!fs.existsSync(file)) return res.status(500).send('Dashboard HTML is missing. Run scripts/patch-card-dashboard.js');
+  res.sendFile(file);
+});
 
 app.get('/api/meta', (_req, res) => {
   res.json({
     marketplace: process.env.MARKETPLACE_ADAPTER || 'manual',
     executor: process.env.TRADE_EXECUTOR || 'manual',
     eldorado: process.env.ELDORADO_ENABLED === 'true',
+    liveDashboard: getLiveMeta(),
   });
+});
+
+app.post('/api/live/refresh', (_req, res) => {
+  res.json({ ok: true, liveDashboard: requestPull() });
 });
 
 app.use((req, res, next) => {
@@ -172,6 +185,12 @@ async function main() {
   await initDb();
   await migrate();
   await seedIfEmpty();
+  const { ensureCatalog } = require('./routes/utils/catalog');
+  ensureCatalog().then((catalog) => {
+    console.log(`[catalog] ready (${Object.keys(catalog.cards || {}).length} cards)`);
+  }).catch((err) => {
+    console.warn('[catalog] will load on first inventory request:', err.message);
+  });
   app.listen(PORT, () => {
     console.log(`PokemonTCG-Lister listening on ${PORT}`);
   });

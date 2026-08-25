@@ -8,7 +8,7 @@ import ImportView from './views/ImportView.jsx';
 import SettingsView from './views/SettingsView.jsx';
 
 const NAV = [
-  ['inventory', 'Inventory'],
+  ['inventory', 'Cards'],
   ['composer', 'Listings'],
   ['accounts', 'Accounts'],
   ['jobs', 'Jobs'],
@@ -17,7 +17,7 @@ const NAV = [
 ];
 
 const TITLES = {
-  inventory: 'INVENTORY',
+  inventory: 'CARD DATABASE',
   composer: 'LISTINGS',
   accounts: 'ACCOUNTS',
   jobs: 'TRADE JOBS',
@@ -58,10 +58,11 @@ export default function App() {
     api.meta().then(setMeta).catch(() => setMeta(null));
   }, []);
 
-  const wide = view === 'inventory' || view === 'jobs' || view === 'composer';
+  const fullBleed = view === 'inventory';
+  const wide = view === 'jobs' || view === 'composer';
 
   return (
-    <div className={`flex flex-col h-full mx-auto bg-surface-900 border-x border-surface-700/50 ${wide ? 'max-w-6xl' : 'max-w-2xl'}`}>
+    <div className={`flex flex-col h-full mx-auto bg-surface-900 ${fullBleed ? 'max-w-none' : wide ? 'max-w-6xl border-x border-surface-700/50' : 'max-w-2xl border-x border-surface-700/50'}`}>
       <header className="shrink-0 border-b border-surface-700/50">
         <div className="flex items-center justify-between px-4 py-3">
           <div>
@@ -91,13 +92,25 @@ export default function App() {
         </nav>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4">
-        {view === 'inventory' && <InventoryView onCompose={() => navigate('composer')} />}
-        {view === 'composer' && <ComposerView />}
-        {view === 'accounts' && <AccountsView />}
-        {view === 'jobs' && <JobsView />}
-        {view === 'import' && <ImportView />}
-        {view === 'settings' && <SettingsView />}
+      <main className={fullBleed ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 overflow-y-auto p-4'}>
+        <div className={view === 'inventory' ? 'h-full' : 'hidden'}>
+          <InventoryView />
+        </div>
+        <div className={view === 'composer' ? '' : 'hidden'}>
+          <ComposerView />
+        </div>
+        <div className={view === 'accounts' ? '' : 'hidden'}>
+          <AccountsView />
+        </div>
+        <div className={view === 'jobs' ? '' : 'hidden'}>
+          <JobsView />
+        </div>
+        <div className={view === 'import' ? '' : 'hidden'}>
+          <ImportView active={view === 'import'} />
+        </div>
+        <div className={view === 'settings' ? '' : 'hidden'}>
+          <SettingsView />
+        </div>
       </main>
     </div>
   );

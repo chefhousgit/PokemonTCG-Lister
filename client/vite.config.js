@@ -9,6 +9,8 @@ export default defineConfig({
     proxy: {
       '/api': { target: 'http://localhost:3001', changeOrigin: true },
       '/auth': { target: 'http://localhost:3001', changeOrigin: true },
+      '/dashboard': { target: 'http://localhost:3001', changeOrigin: true },
+      '/__dashboard': { target: 'http://localhost:3001', changeOrigin: true },
     },
   },
   build: {

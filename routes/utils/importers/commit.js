@@ -1,24 +1,44 @@
 const { parseAccountJson } = require('./ptcgpbAccount');
+const { catalogFields, ensureCatalog } = require('../catalog');
 
-async function ensureCard(db, cardKey) {
-  const found = await db.query('SELECT id FROM cards WHERE card_id = $1', [cardKey]);
-  if (found.rows[0]) return found.rows[0].id;
-  const variant = cardKey.split('_').pop() || '00';
-  const inserted = await db.query(
-    `INSERT INTO cards (card_id, name, rarity, variant)
-     VALUES ($1, $2, 'unknown', $3)
-     ON CONFLICT (card_id) DO UPDATE SET name = cards.name
-     RETURNING id`,
-    [cardKey, cardKey, variant],
+async function ensureCards(db, keys) {
+  const unique = [...new Set(keys.filter(Boolean))];
+  if (!unique.length) return {};
+  await ensureCatalog().catch(() => {});
+  const values = [];
+  const params = [];
+  unique.forEach((key, i) => {
+    const meta = catalogFields(key);
+    const base = i * 7;
+    values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`);
+    params.push(key, meta.name, meta.rarity, meta.variant, meta.set_code || null, meta.number || null, meta.image_ref || null);
+  });
+  await db.query(
+    `INSERT INTO cards (card_id, name, rarity, variant, set_code, number, image_ref)
+     VALUES ${values.join(',')}
+     ON CONFLICT (card_id) DO UPDATE SET
+       name = CASE WHEN cards.rarity = 'unknown' OR cards.name = cards.card_id THEN EXCLUDED.name ELSE cards.name END,
+       rarity = CASE WHEN cards.rarity = 'unknown' THEN EXCLUDED.rarity ELSE cards.rarity END,
+       set_code = COALESCE(cards.set_code, EXCLUDED.set_code),
+       number = COALESCE(cards.number, EXCLUDED.number),
+       image_ref = COALESCE(cards.image_ref, EXCLUDED.image_ref)`,
+    params,
   );
-  return inserted.rows[0].id;
+  const rows = await db.query('SELECT id, card_id FROM cards WHERE card_id = ANY($1::text[])', [unique]);
+  return Object.fromEntries(rows.rows.map((r) => [r.card_id, r.id]));
 }
 
-async function upsertParsedAccount(db, parsed) {
+async function ensureCard(db, cardKey) {
+  const map = await ensureCards(db, [cardKey]);
+  return map[cardKey];
+}
+
+async function upsertParsedAccount(db, parsed, cardMap = {}) {
   if (!parsed.account) return { skipped: parsed.skipped || [] };
   const a = parsed.account;
   const existing = await db.query('SELECT * FROM accounts WHERE external_key = $1', [a.external_key]);
   let accountId;
+  const sourceJson = parsed.raw ? JSON.stringify(parsed.raw) : null;
   if (existing.rows[0]) {
     const row = await db.query(
       `UPDATE accounts SET
@@ -29,24 +49,25 @@ async function upsertParsedAccount(db, parsed) {
          packs_opened = COALESCE($6, packs_opened),
          trade_currency = COALESCE($7, trade_currency),
          notes = COALESCE($8, notes),
+         source_json = COALESCE($9, source_json),
          health = CASE WHEN health = 'retired' THEN 'active' ELSE health END,
          updated_at = NOW()
        WHERE id = $1 RETURNING id`,
-      [existing.rows[0].id, a.label, a.in_game_handle, a.friend_id, a.emulator_instance, a.packs_opened, a.trade_currency, a.notes],
+      [existing.rows[0].id, a.label, a.in_game_handle, a.friend_id, a.emulator_instance, a.packs_opened, a.trade_currency, a.notes, sourceJson],
     );
     accountId = row.rows[0].id;
   } else {
     const row = await db.query(
       `INSERT INTO accounts (external_key, label, in_game_handle, friend_id, emulator_instance,
-        packs_opened, trade_currency, notes, health)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active') RETURNING id`,
-      [a.external_key, a.label, a.in_game_handle, a.friend_id, a.emulator_instance, a.packs_opened, a.trade_currency, a.notes],
+        packs_opened, trade_currency, notes, health, source_json)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', $9) RETURNING id`,
+      [a.external_key, a.label, a.in_game_handle, a.friend_id, a.emulator_instance, a.packs_opened, a.trade_currency, a.notes, sourceJson],
     );
     accountId = row.rows[0].id;
   }
 
   for (const [cardKey, qty] of Object.entries(parsed.counts || {})) {
-    const cardId = await ensureCard(db, cardKey);
+    const cardId = cardMap[cardKey] || await ensureCard(db, cardKey);
     await db.query(
       `INSERT INTO inventory_items (account_id, card_id, qty, reserved_qty, source, acquired_at)
        VALUES ($1, $2, $3, 0, 'ptcgpb', NOW())
@@ -55,9 +76,9 @@ async function upsertParsedAccount(db, parsed) {
     );
   }
 
-  const marks = { ...parsed.marks.traded, ...parsed.marks.shared };
+  const marks = { ...(parsed.marks && parsed.marks.traded), ...(parsed.marks && parsed.marks.shared) };
   for (const [cardKey, qty] of Object.entries(marks)) {
-    const cardId = await ensureCard(db, cardKey);
+    const cardId = cardMap[cardKey] || await ensureCard(db, cardKey);
     const item = await db.query(
       'SELECT id FROM inventory_items WHERE account_id = $1 AND card_id = $2',
       [accountId, cardId],
@@ -83,9 +104,20 @@ async function upsertParsedAccount(db, parsed) {
 }
 
 async function commitParsed(db, parsedRows, retireKeys) {
+  const allKeys = [];
+  for (const parsed of parsedRows || []) {
+    allKeys.push(...Object.keys(parsed.counts || {}));
+    allKeys.push(...Object.keys((parsed.marks && parsed.marks.traded) || {}));
+    allKeys.push(...Object.keys((parsed.marks && parsed.marks.shared) || {}));
+  }
+  const cardMap = await ensureCards(db, allKeys);
+
   const results = [];
+  let itemCount = 0;
   for (const parsed of parsedRows) {
-    results.push(await upsertParsedAccount(db, parsed));
+    const result = await upsertParsedAccount(db, parsed, cardMap);
+    results.push(result);
+    itemCount += Object.keys(parsed.counts || {}).length;
   }
   for (const key of retireKeys || []) {
     await db.query(
@@ -93,12 +125,14 @@ async function commitParsed(db, parsedRows, retireKeys) {
       [key],
     );
   }
-  return results;
+  return { results, accounts: results.filter((r) => r.accountId).length, items: itemCount };
 }
 
 function parseUploadedJson(buffer, filename) {
   const obj = JSON.parse(buffer.toString('utf8'));
-  return parseAccountJson(obj, filename);
+  const parsed = parseAccountJson(obj, filename);
+  parsed.raw = obj;
+  return parsed;
 }
 
 module.exports = { upsertParsedAccount, commitParsed, parseUploadedJson, ensureCard };

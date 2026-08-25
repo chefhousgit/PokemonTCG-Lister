@@ -7,11 +7,14 @@ Outbound-only worker. It long-polls the Railway (or local) server. Nothing liste
 1. Copy `config.example.json` to `config.json`.
 2. Set `serverUrl` to your app (e.g. `https://your-app.up.railway.app` or `http://localhost:3001`).
 3. Set `agentToken` to the same `AGENT_TOKEN` as the server.
-4. Optional: set `ptcgpbRoot` to this computer's PTCGPB folder. You can also save paths in the web app **Settings** tab.
+4. Set `ptcgpbRoot` to this computer's PTCGPB folder so the agent can read `Accounts\\Cards\\.dashboard_ports.txt` and ping the live card dashboard. Optional `dashboardUrl` if you want to force a port.
+5. Leave PTCGPB's card dashboard running (`start_card_dashboard`). The agent copies that live data to Railway. It never launches the bot and never reads `Accounts\\Saved`.
 
 ```
 node agent/index.js
 ```
+
+`pollMs` (default 60000) is how often the agent copies live card counts to the server. `checkMs` (default 5000) is how often it looks for a **Pull now** click from the Lister Cards page. Restart the agent after changing these.
 
 ## Task Scheduler
 

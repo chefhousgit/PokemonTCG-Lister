@@ -1,7 +1,9 @@
 {
-  "serverUrl": "http://localhost:3001",
+  "serverUrl": "https://pokemontcg-lister-production.up.railway.app",
   "agentToken": "replace-with-AGENT_TOKEN",
   "agentId": "desktop-1",
-  "ptcgpbRoot": "C:\\Users\\User\\Desktop\\PTCGPB-main",
-  "pollMs": 5000
+  "ptcgpbRoot": "C:\\Users\\Mahmoud\\Desktop\\PTCGPB-main",
+  "dashboardUrl": "",
+  "pollMs": 60000,
+  "checkMs": 5000
 }

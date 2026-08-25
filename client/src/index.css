@@ -51,6 +51,125 @@
   .section-heading { @apply text-xs font-display font-bold text-text-muted uppercase tracking-[0.15em]; }
 }
 
+.check-chip {
+  @apply inline-flex items-center justify-center gap-1.5 min-h-[40px] px-3 rounded-lg border border-surface-700
+    bg-surface-800 text-xs font-display text-text-secondary cursor-pointer transition-colors duration-200;
+}
+.check-chip:hover { @apply border-accent/40 text-text-primary; }
+.check-chip.checked {
+  @apply border-accent/70 text-text-primary bg-accent/15;
+}
+.card-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-w, 120px), 1fr));
+  gap: 12px;
+}
+.card-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.card-tile.is-missing { opacity: 0.42; }
+.card-tile-body {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.card-art,
+.card-art-fallback {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  border-radius: 10px;
+  background: #1a2332;
+  border: 1px solid #243447;
+}
+.card-art-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  font-size: 10px;
+  color: #7a8ba0;
+  text-align: center;
+}
+.card-qty,
+.card-sellable {
+  position: absolute;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 999px;
+}
+.card-qty {
+  top: 6px;
+  right: 6px;
+  background: rgba(15, 20, 25, 0.88);
+  color: #e8edf4;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.card-sellable {
+  bottom: 6px;
+  left: 6px;
+  background: rgba(0, 212, 170, 0.92);
+  color: #0f1419;
+}
+.card-tile-name {
+  font-size: 12px;
+  line-height: 1.3;
+  color: #e8edf4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-tile-meta {
+  font-size: 11px;
+  color: #7a8ba0;
+}
+.card-tile-select {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  min-width: 28px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 20, 25, 0.75);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.card-tile-select input {
+  width: 18px;
+  height: 18px;
+  accent-color: #00d4aa;
+  cursor: pointer;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }

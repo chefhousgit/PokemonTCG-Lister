@@ -3,6 +3,8 @@ const { getDb } = require('./utils/db');
 const { assertSafeJobPayload } = require('./utils/jobPayload');
 const { addJobEvent, jobPayloadFromRow, executor } = require('./utils/jobs');
 const { releaseJob } = require('./utils/fulfillment');
+const { setLive, getLiveMeta, takePendingWrites, takePullRequest } = require('./utils/liveDashboard');
+const { processLiveRows } = require('./utils/cardAlerts');
 
 const router = express.Router();
 const CLAIM_TTL_MS = Number(process.env.CLAIM_TTL_MS || 5 * 60 * 1000);
@@ -166,6 +168,40 @@ router.get('/config', async (_req, res) => {
     paths: paths.rows,
     executor: executor().name,
   });
+});
+
+router.post('/dashboard/status', async (req, res) => {
+  if (req.body && req.body.online === false) {
+    return res.json({ ok: true, ...getLiveMeta(), reported: 'offline', error: req.body.error || null });
+  }
+  res.json({ ok: true, ...getLiveMeta() });
+});
+
+router.post('/dashboard/pull-writes', (_req, res) => {
+  res.json({ ok: true, writes: takePendingWrites(), pullRequested: takePullRequest() });
+});
+
+router.post('/dashboard/live', async (req, res) => {
+  const body = req.body || {};
+  if (!body.summary || body.summary.ok === false) {
+    return res.status(400).json({ error: 'Live summary missing' });
+  }
+  const rows = typeof body.rows === 'string' ? body.rows : '';
+  const meta = setLive({
+    agentId: body.agentId,
+    dashboardUrl: body.dashboardUrl,
+    summary: body.summary,
+    rows,
+    marks: body.marks,
+    wishlist: body.wishlist,
+    uiPrefs: body.uiPrefs,
+  });
+  try {
+    await processLiveRows(getDb(), rows);
+  } catch (err) {
+    console.error('[card-alerts]', err.message);
+  }
+  res.json({ ok: true, ...meta });
 });
 
 module.exports = router;

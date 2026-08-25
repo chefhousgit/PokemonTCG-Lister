@@ -57,7 +57,9 @@ function scanPtcgpbFolder(folderPath) {
     try {
       assertSafeImportPath(file);
       const obj = JSON.parse(fs.readFileSync(file, 'utf8'));
-      parsed.push(parseAccountJson(obj, path.basename(file)));
+      const parsedRow = parseAccountJson(obj, path.basename(file));
+      parsedRow.raw = obj;
+      parsed.push(parsedRow);
     } catch (err) {
       parsed.push({ skipped: [{ reason: 'parse_error', file, message: err.message }] });
     }

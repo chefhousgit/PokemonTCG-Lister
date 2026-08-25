@@ -1,101 +1,97 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { api } from '../utils/api.js';
 
-export default function InventoryView({ onCompose }) {
-  const [rows, setRows] = useState([]);
-  const [q, setQ] = useState('');
-  const [open, setOpen] = useState({});
-  const [selected, setSelected] = useState({});
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+function ageLabel(ageMs) {
+  if (ageMs == null) return '';
+  const seconds = Math.max(0, Math.round(ageMs / 1000));
+  if (seconds < 60) return `${seconds}s ago`;
+  return `${Math.round(seconds / 60)}m ago`;
+}
 
-  async function load(query) {
-    const data = await api.inventory(query);
-    setRows(data.rows || []);
-  }
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export default function InventoryView() {
+  const [live, setLive] = useState(null);
+  const [pulling, setPulling] = useState(false);
+  const [pullError, setPullError] = useState('');
+  const [frameKey, setFrameKey] = useState(0);
+  const liveRef = useRef(null);
+  liveRef.current = live;
 
   useEffect(() => {
-    load().catch((err) => setError(err.message));
-  }, []);
+    let cancelled = false;
+    async function refresh() {
+      try {
+        const meta = await api.meta();
+        if (!cancelled) setLive(meta.liveDashboard || null);
+      } catch {
+        if (!cancelled) setLive(null);
+      }
+    }
+    refresh();
+    const timer = setInterval(refresh, pulling ? 2000 : 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [pulling]);
 
-  const selectedIds = Object.entries(selected).filter(([, v]) => v).map(([id]) => Number(id));
-
-  async function createDrafts() {
-    setError('');
-    setMessage('');
+  async function pullNow() {
+    if (pulling) return;
+    setPulling(true);
+    setPullError('');
+    const beforeAt = liveRef.current && liveRef.current.at;
     try {
-      const result = await api.bulkListings(selectedIds);
-      setMessage(`${result.created.length} drafts created. ${result.refused.length} refused.`);
-      if (onCompose) onCompose();
+      await api.requestLivePull();
+      const deadline = Date.now() + 45000;
+      while (Date.now() < deadline) {
+        await sleep(1500);
+        const meta = await api.meta();
+        const next = meta.liveDashboard || null;
+        setLive(next);
+        const arrived = next && next.live && next.at && next.at !== beforeAt;
+        const firstLive = !beforeAt && next && next.live;
+        if (arrived || firstLive) {
+          setFrameKey((n) => n + 1);
+          return;
+        }
+      }
+      setPullError('Agent did not refresh in time. Is it running on the PTCGPB PC?');
     } catch (err) {
-      setError(err.message);
+      setPullError(err.message || 'Pull failed');
+    } finally {
+      setPulling(false);
     }
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <input
-          className="field-input"
-          placeholder="Filter name / set / id"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') load(q).catch((err) => setError(err.message)); }}
-        />
-        <button type="button" className="btn-secondary" onClick={() => load(q)}>Filter</button>
-        <button type="button" className="btn-primary" disabled={!selectedIds.length} onClick={createDrafts}>
-          Draft {selectedIds.length || ''}
+    <div className="h-full min-h-0 flex flex-col">
+      <div className="shrink-0 px-3 py-2 border-b border-surface-700/50 text-xs font-display flex flex-wrap items-center gap-x-3 gap-y-2">
+        {live && live.live ? (
+          <span className="text-accent">Live from PTCGPB · {ageLabel(live.ageMs)} · {live.accountCount || 0} accounts</span>
+        ) : (
+          <span className="text-warn">
+            Using imported accounts. Run the local agent on the PTCGPB PC with the card dashboard open for live data.
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={pullNow}
+          disabled={pulling}
+          className="ml-auto min-h-[32px] px-3 rounded-lg border border-surface-700 bg-surface-800 text-[11px] font-display uppercase tracking-wider text-accent hover:border-accent/40 disabled:opacity-40"
+        >
+          {pulling ? 'Pulling…' : 'Pull now'}
         </button>
+        {pullError ? <span className="w-full text-danger">{pullError}</span> : null}
       </div>
-      {error && <p className="text-sm text-danger">{error}</p>}
-      {message && <p className="text-sm text-accent">{message}</p>}
-
-      <div className="hidden md:grid grid-cols-12 gap-2 px-2 text-[11px] font-display uppercase tracking-wider text-text-muted">
-        <div className="col-span-1">Sel</div>
-        <div className="col-span-5">Card</div>
-        <div className="col-span-2">Total</div>
-        <div className="col-span-2">Sellable</div>
-        <div className="col-span-2">Accounts</div>
-      </div>
-
-      <ul className="space-y-2">
-        {rows.map((row) => (
-          <li key={row.card.id} className="card p-3">
-            <div className="grid grid-cols-12 gap-2 items-center">
-              <div className="col-span-2 md:col-span-1">
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 accent-[#00d4aa] cursor-pointer"
-                  checked={Boolean(selected[row.card.id])}
-                  onChange={(e) => setSelected((s) => ({ ...s, [row.card.id]: e.target.checked }))}
-                  aria-label={`Select ${row.card.name}`}
-                />
-              </div>
-              <button
-                type="button"
-                className="col-span-10 md:col-span-5 text-left cursor-pointer"
-                onClick={() => setOpen((o) => ({ ...o, [row.card.id]: !o[row.card.id] }))}
-              >
-                <p className="font-display text-sm">{row.card.name}</p>
-                <p className="text-xs text-text-muted">{row.card.set_code} #{row.card.number} · {row.card.rarity}</p>
-              </button>
-              <div className="col-span-4 md:col-span-2 text-sm">{row.total}</div>
-              <div className="col-span-4 md:col-span-2 text-sm text-accent">{row.sellable}</div>
-              <div className="col-span-4 md:col-span-2 text-sm text-text-secondary">{row.perAccount.length}</div>
-            </div>
-            {open[row.card.id] && (
-              <ul className="mt-3 space-y-1 border-t border-surface-700 pt-2">
-                {row.perAccount.map((acc) => (
-                  <li key={acc.account_id} className="text-xs flex justify-between text-text-secondary">
-                    <span>{acc.label} ({acc.health})</span>
-                    <span>qty {acc.qty} · reserved {acc.reserved_qty} · sellable {acc.sellable}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ul>
+      <iframe
+        key={frameKey}
+        title="PTCGPB card dashboard"
+        src="/dashboard"
+        className="w-full flex-1 min-h-0 border-0 bg-[#0b1020]"
+      />
     </div>
   );
 }
